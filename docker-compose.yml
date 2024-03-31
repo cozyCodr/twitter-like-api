@@ -1,0 +1,12 @@
+version: '3'
+services:
+  spring-boot-app:
+    image: twitter-analog
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongodb
+  mongodb:
+    image: mongo
+    ports:
+      - "27018:27017"

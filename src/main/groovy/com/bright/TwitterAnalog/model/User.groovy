@@ -57,7 +57,7 @@ class User {
     }
 
     void removePost(Post post){
-        posts.remove(post)
+        posts.removeIf {it.id == post.getId() }
     }
 
     void addNewFollower(User user){
@@ -65,7 +65,7 @@ class User {
     }
 
     void removeFollower(User user){
-        followers.remove(user)
+        followers.removeIf {it.id == user.getId() }
     }
 
     void addFollowing(User user){
@@ -73,7 +73,7 @@ class User {
     }
 
     void removeFollowing(User user){
-        following.remove(user)
+        following.removeIf {it.id == user.getId() }
     }
 
     void addFavorite(Post post){
@@ -81,7 +81,7 @@ class User {
     }
 
     void removeFavorite(Post post){
-        favoritePosts.remove(post)
+        favoritePosts.removeIf { it.id == post.getId() }
     }
 
     void addPermission(String permission){

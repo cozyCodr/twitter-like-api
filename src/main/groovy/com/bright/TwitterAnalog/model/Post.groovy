@@ -33,7 +33,7 @@ class Post {
     }
 
     void removeLike(User user){
-        likes.remove(user)
+        likes.removeIf { it.id == user.getId() }
     }
 
     void addComment(Comment comment){
@@ -41,7 +41,6 @@ class Post {
     }
 
     void removeComment(Comment comment){
-        comments.remove(comment)
+        comments.removeIf {it.id == comment.getId()}
     }
-
 }

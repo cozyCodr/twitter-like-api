@@ -1,7 +1,7 @@
 package com.bright.TwitterAnalog.dto
 
 class CommentDto {
-    def id
+    def userId
     def content
     def createdAt
     def postId

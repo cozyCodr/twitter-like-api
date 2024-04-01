@@ -10,4 +10,5 @@ class PostDto {
     def likes
     def comments
     boolean liked
+    boolean isFavorite
 }

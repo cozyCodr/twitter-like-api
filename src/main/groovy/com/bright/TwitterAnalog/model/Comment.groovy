@@ -10,12 +10,9 @@ import org.springframework.data.mongodb.core.mapping.DBRef
 @Setter
 @Builder
 class Comment {
-
-    @Id
-    String id
     String content
     Date createdAt
-    User user
+    String userId
     String postId
 
     @DBRef

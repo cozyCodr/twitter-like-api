@@ -31,7 +31,7 @@ class UserController {
     ResponseEntity<ResponseBody> getUserFeed(
             @RequestParam(name="size", required = false, defaultValue = "25") int size,
             @RequestParam(name="page", required = false, defaultValue = "1") int page,
-            @PathVariable String userId,
+            @PathVariable(name = "userId") String userId,
             @RequestHeader("Authorization") String authorizationHeader
     ){
         return postService.getUserFeed(userId, page, size, authorizationHeader)
@@ -51,16 +51,16 @@ class UserController {
     ResponseEntity<ResponseBody> getCommentsByUser(
             @RequestParam(name="size", required = false, defaultValue = "25") int size,
             @RequestParam(name="page", required = false, defaultValue = "1") int page,
-            @PathVariable String userId,
+            @PathVariable(name = "userId") String userId,
             @RequestHeader("Authorization") String authorizationHeader
     ){
         return postService.getCommentsByUser(userId, page, size, authorizationHeader)
     }
 
-    @PatchMapping()
+    @PatchMapping
     ResponseEntity<ResponseBody> updateUser(
             @RequestBody UpdateUserDto request,
-            @RequestParam(name="user", required = true) String userId,
+            @RequestParam(name = "user", required = true) String userId,
             @RequestHeader("Authorization") String authorizationHeader
     ){
         return userService.updateUser(request, userId, authorizationHeader)
@@ -76,8 +76,8 @@ class UserController {
 
     @GetMapping("/{userId}/follow/{targetUser}")
     ResponseEntity<ResponseBody> followUser(
-            @PathVariable String userId,
-            @PathVariable String targetUser,
+            @PathVariable(name = "userId") String userId,
+            @PathVariable(name = "targetUser") String targetUser,
             @RequestHeader("Authorization") String authorizationHeader
     ){
         return userService.followUser(userId, targetUser, authorizationHeader)
@@ -85,8 +85,8 @@ class UserController {
 
     @GetMapping("/{userId}/unfollow/{targetUser}")
     ResponseEntity<ResponseBody> unFollowUser(
-            @PathVariable String userId,
-            @PathVariable String targetUser,
+            @PathVariable(name = "userId") String userId,
+            @PathVariable(name = "targetUser") String targetUser,
             @RequestHeader("Authorization") String authorizationHeader
     ){
         return userService.unFollowUser(userId, targetUser, authorizationHeader)

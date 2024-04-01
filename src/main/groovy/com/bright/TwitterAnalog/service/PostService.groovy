@@ -10,8 +10,11 @@ import com.bright.TwitterAnalog.model.Comment
 import com.bright.TwitterAnalog.model.Post
 import com.bright.TwitterAnalog.repository.PostRepository
 import com.bright.TwitterAnalog.repository.UserRepository
+import com.mongodb.BasicDBObject
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.aggregation.Aggregation
+import org.springframework.data.mongodb.core.aggregation.AggregationExpression
 import org.springframework.data.mongodb.core.aggregation.TypedAggregation
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
@@ -24,6 +27,7 @@ import org.springframework.data.domain.Sort
 @Service
 class PostService {
 
+    @Autowired
     MongoTemplate mongoTemplate
 
     PostRepository postRepository
@@ -71,7 +75,6 @@ class PostService {
             println "Saving post"
             postRepository.save(post)
 
-
             // Link post to User
             user.addPost(post)
             userRepository.save(user)
@@ -79,7 +82,15 @@ class PostService {
             return ResponseEntity.status(HttpStatus.CREATED).body(ResponseBody.builder()
                     .statusCode(HttpStatus.CREATED.value())
                     .message("New Post Created successfully!")
-                    .data(user)
+                    .data(new PostDto(
+                            id: post.getId(),
+                            content: post.getContent(),
+                            createdAt: post.getCreatedAt(),
+                            likes: post.getLikes() ? post.getLikes().size(): 0,
+                            comments: post.getComments() ? post.getComments().size() : 0,
+                            liked: user in post.getLikes(),
+                            isFavorite: user.getFavoritePosts().contains(post)
+                    ))
                     .build())
         }
         catch(IllegalArgumentException e){
@@ -125,7 +136,14 @@ class PostService {
             return ResponseEntity.status(HttpStatus.OK).body(ResponseBody.builder()
                     .statusCode(HttpStatus.OK.value())
                     .message("Post updated successfully!")
-                    .data(post.getContent())
+                    .data(new PostDto(
+                            id: post.getId(),
+                            content: post.getContent(),
+                            createdAt: post.getCreatedAt(),
+                            updatedAt: post.getUpdatedAt(),
+                            likes: post.getLikes() ? post.getLikes().size(): 0,
+                            comments: post.getComments() ? post.getComments().size() : 0,
+                    ))
                     .build())
         }
         catch(IllegalArgumentException e){
@@ -214,8 +232,9 @@ class PostService {
             // Create Comment
             def comment = Comment.builder()
                     .content(dto.getContent())
+                    .createdAt(new Date())
                     .postId(post.getId())
-                    .user(user)
+                    .userId(user.getId())
                     .build()
 
             // Add Comment To Post and Save
@@ -358,13 +377,15 @@ class PostService {
             def user = userRepository.findById(userId)
                     .orElseThrow(() -> new IllegalArgumentException("User with given ID does not exist"))
 
-            // Add post to favorites and save
+            // Remove post from favorites and save
             user.removeFavorite(post)
+            def favorites = user.getFavoritePosts()
             userRepository.save(user)
 
             return ResponseEntity.status(HttpStatus.OK).body(ResponseBody.builder()
                     .statusCode(HttpStatus.OK.value())
                     .message("Post unmarked as favorite!")
+                    .data(favorites)
                     .build())
         }
         catch(IllegalArgumentException e){
@@ -501,32 +522,52 @@ class PostService {
             // Create pagination request
             PageRequest pageRequest = PageRequest.of(page, pageSize, sort)
 
+            // Response data object
+            def data
+
             // Query posts owned by the users the current user is following, sorted and paginated
-            List<Post> postsFromFollowedUsers = mongoTemplate.find(Query.query(Criteria.where("owner").in(followingUserIds))
-                    .with(pageRequest), Post)
+            print followingUserIds
+            if (followingUserIds != null && !followingUserIds.isEmpty()){
+                println "in here"
+                List<Post> postsFromFollowedUsers = mongoTemplate.find(Query.query(Criteria.where("owner").in(followingUserIds))
+                        .with(pageRequest), Post)
 
-            def totalNumberOfPosts = mongoTemplate.count(Query.query(Criteria.where("owner").in(followingUserIds)), "posts")
+                def totalNumberOfPosts = mongoTemplate.count(Query.query(Criteria.where("owner").in(followingUserIds)), "posts")
 
-            // Create usable dto for frontend
-            List<PostDto> posts = postsFromFollowedUsers.collect { post ->
-                PostDto dto = new PostDto(
-                        id: post.id,
-                        content: post.content,
-                        createdAt: post.createdAt.toString(),
-                        updatedAt: post.updatedAt.toString(),
-                        likes: post.likes.size(),
-                        comments: post.comments.size(),
-                        liked: user in post.likes
+                // Create usable dto for frontend
+                List<PostDto> posts = postsFromFollowedUsers.collect { post ->
+                    PostDto dto = new PostDto(
+                            id: post.getId(),
+                            content: post.getContent(),
+                            createdAt: post.getCreatedAt().toString(),
+                            updatedAt: post.getUpdatedAt().toString(),
+                            likes: post.getLikes() ? post.getLikes().size(): 0,
+                            comments: post.getComments() ? post.getComments().size() : 0,
+                            liked: user in post.getLikes(),
+                            isFavorite: user.getFavoritePosts().contains(post)
+                    )
+                    dto
+                }
+
+                data = new DataDto(
+                        result: posts,
+                        page: page,
+                        size: pageSize,
+                        total: totalNumberOfPosts
                 )
-                dto
+            }
+            else {
+                println "Nope. in here"
+                data = new DataDto(
+                        result: [],
+                        page: page,
+                        size: pageSize,
+                        total: 0
+                )
             }
 
-            def data = new DataDto(
-                    result: posts,
-                    page: page,
-                    size: pageSize,
-                    total: totalNumberOfPosts
-            )
+
+
 
             return ResponseEntity.status(HttpStatus.OK).body(ResponseBody.builder()
                     .statusCode(HttpStatus.OK.value())
@@ -585,13 +626,14 @@ class PostService {
             // Create DTOs for frontend
             List<PostDto> likedPostsDto = likedPosts.collect { post ->
                 PostDto dto = new PostDto(
-                        id: post.id,
-                        content: post.content,
-                        createdAt: post.createdAt.toString(),
-                        updatedAt: post.updatedAt.toString(),
-                        likes: post.likes.size(),
-                        comments: post.comments.size(),
-                        liked: true // Set liked to true for all posts liked by the user
+                        id: post.getId(),
+                        content: post.getContent(),
+                        createdAt: post.getCreatedAt().toString(),
+                        updatedAt: post.getUpdatedAt().toString(),
+                        likes: post.getLikes() ? post.getLikes().size(): 0,
+                        comments: post.getComments() ? post.getComments().size() : 0,
+                        liked: true, // Set liked to true for all posts liked by the user
+                        isFavorite: user.getFavoritePosts().contains(post)
                 )
                 dto
             }
@@ -626,7 +668,7 @@ class PostService {
      * @return
      */
     ResponseEntity<ResponseBody> getCommentsByUser(String userId, int pageNumber, int pageSize, String authorizationHeader) {
-        try {
+//        try {
             authenticationService.checkIfUserIsAuthenticated(authorizationHeader)
             authenticationService.checkIfUserIsAuthorized(authorizationHeader)
 
@@ -635,46 +677,49 @@ class PostService {
                     .orElseThrow(() -> new IllegalArgumentException("User ID in token is invalid"))
 
 
-            // Create sort criteria (sorted by creation date, most recent first)
-            Sort sort = Sort.by(Sort.Direction.DESC, "createdAt")
+        // Create sort criteria (sorted by creation date, most recent first)
+        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt")
 
-            // Offset page count due to zero indexing
-            int page = pageNumber - 1
+        // Offset page count due to zero indexing
+        int page = pageNumber - 1
 
-            // Create pagination request
-            PageRequest pageRequest = PageRequest.of(page, pageSize, sort)
+        // Create pagination request
+        PageRequest pageRequest = PageRequest.of(page, pageSize, sort)
 
-            // Query posts commented by the user
-            Aggregation aggregation = Aggregation.newAggregation(
-                    Aggregation.match(Criteria.where("user").is(user.id)),
-                    Aggregation.group("post.id").addToSet("post.id").as("postId")
-            )
+        // Aggregation pipeline to unwind comments, match by userId, and project desired fields
+        TypedAggregation<Post> aggregation = Aggregation.newAggregation(Post.class,
+                Aggregation.unwind("comments"),
+                Aggregation.match(Criteria.where("comments.userId").is(userId)),
+                Aggregation.project()
+                        .and("comments.content").as("content")
+                        .and("comments.userId").as("userId")
+                        .and("comments.postId").as("postId")
+                        .and("comments.createdAt").as("createdAt"),
+                Aggregation.sort(sort),
+                Aggregation.skip(page * pageSize),
+                Aggregation.limit(pageSize)
+        )
 
-            List<String> commentedPostIds = mongoTemplate.aggregate(aggregation as TypedAggregation<?>, Comment.class)
-                    .mappedResults
-                    .collect { it.postId }
+        // Execute aggregation pipeline
+        List<CommentDto> comments = mongoTemplate.aggregate(aggregation, CommentDto.class)
+                .mappedResults
 
-            // Query comments on the posts commented by the user, sorted and paginated
-            List<Comment> commentList = mongoTemplate.find(Query.query(Criteria.where("post.id").in(commentedPostIds))
-                    .with(pageRequest), Comment)
+        // Count total comments
+        long totalComments = mongoTemplate.count(Query.query(Criteria.where("comments.userId").is(userId)), Post.class)
 
-            // Create DTOs for frontend
-            List<CommentDto> comments = commentList.collect { comment ->
-                CommentDto dto = new CommentDto(
-                        id: comment.id,
-                        content: comment.content,
-                        postId: comment.postId,
-                        createdAt: comment.createdAt
-                )
-                dto
-            }
+        def data = new DataDto(
+                result: comments,
+                page: page,
+                size: pageSize,
+                total: totalComments
+        )
 
-            def data = new DataDto(
-                    result: comments,
-                    page: page,
-                    size: pageSize,
-                    total: commentList.size()
-            )
+//            def data = new DataDto(
+//                    result: comments,
+//                    page: page,
+//                    size: pageSize,
+//                    total: commentList.size()
+//            )
 
             return ResponseEntity.status(HttpStatus.OK).body(ResponseBody.builder()
                     .statusCode(HttpStatus.OK.value())
@@ -682,11 +727,11 @@ class PostService {
                     .data(data)
                     .build())
 
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseBody.builder()
-                    .message(e.getMessage())
-                    .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                    .build())
-        }
+//        } catch (Exception e) {
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseBody.builder()
+//                    .message(e.getMessage())
+//                    .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+//                    .build())
+//        }
     }
 }

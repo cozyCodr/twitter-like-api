@@ -1,6 +1,5 @@
 package com.bright.TwitterAnalog.config
 
-import com.bright.TwitterAnalog.model.User
 import com.bright.TwitterAnalog.repository.UserRepository
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

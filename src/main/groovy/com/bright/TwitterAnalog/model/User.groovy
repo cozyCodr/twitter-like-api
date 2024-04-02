@@ -1,6 +1,5 @@
 package com.bright.TwitterAnalog.model
 
-import com.fasterxml.jackson.annotation.JsonIgnore
 import groovy.transform.builder.Builder
 import lombok.AllArgsConstructor
 import lombok.Getter
@@ -17,36 +16,31 @@ import org.springframework.data.mongodb.core.mapping.Document
 @AllArgsConstructor
 @NoArgsConstructor
 class User {
+
     @Id
     String id
     String username
     String firstname
     String lastname
 
-    @JsonIgnore
     String password
 
     // First Permission is that users role
-    @JsonIgnore
     Set<String> permissions = []
 
     Date createdAt
     Date updatedAt
 
     @DBRef
-    @JsonIgnore
     Set<Post> posts = []
 
     @DBRef
-    @JsonIgnore
     Set<Post> favoritePosts = []
 
     @DBRef
-    @JsonIgnore
     Set<User> following = []
 
     @DBRef
-    @JsonIgnore
     Set<User> followers = []
 
     void addPost(Post post){

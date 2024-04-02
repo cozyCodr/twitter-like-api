@@ -9,5 +9,4 @@ COPY build/libs/*.jar app.jar
 # Expose the port that your Spring Boot application uses
 EXPOSE 8080
 
-#ENTRYPOINT ["top", "-b"]
 ENTRYPOINT ["java", "-jar", "app.jar"]

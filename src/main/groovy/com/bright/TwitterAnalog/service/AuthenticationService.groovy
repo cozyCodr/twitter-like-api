@@ -151,7 +151,7 @@ class AuthenticationService {
     }
 
     private boolean userExists(String username) {
-        def user = userRepository.findByUsername(username)
+        Optional<User> user = userRepository.findByUsername(username)
         return user.isPresent()
     }
 

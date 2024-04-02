@@ -668,7 +668,7 @@ class PostService {
      * @return
      */
     ResponseEntity<ResponseBody> getCommentsByUser(String userId, int pageNumber, int pageSize, String authorizationHeader) {
-//        try {
+        try {
             authenticationService.checkIfUserIsAuthenticated(authorizationHeader)
             authenticationService.checkIfUserIsAuthorized(authorizationHeader)
 
@@ -683,18 +683,15 @@ class PostService {
         // Offset page count due to zero indexing
         int page = pageNumber - 1
 
-        // Create pagination request
-        PageRequest pageRequest = PageRequest.of(page, pageSize, sort)
-
         // Aggregation pipeline to unwind comments, match by userId, and project desired fields
         TypedAggregation<Post> aggregation = Aggregation.newAggregation(Post.class,
                 Aggregation.unwind("comments"),
                 Aggregation.match(Criteria.where("comments.userId").is(userId)),
-                Aggregation.project()
-                        .and("comments.content").as("content")
-                        .and("comments.userId").as("userId")
-                        .and("comments.postId").as("postId")
-                        .and("comments.createdAt").as("createdAt"),
+                ((((Aggregation.project()
+                        & "comments.content").as("content")
+                        & "comments.userId").as("userId")
+                        & "comments.postId").as("postId")
+                        & "comments.createdAt").as("createdAt"),
                 Aggregation.sort(sort),
                 Aggregation.skip(page * pageSize),
                 Aggregation.limit(pageSize)
@@ -714,24 +711,17 @@ class PostService {
                 total: totalComments
         )
 
-//            def data = new DataDto(
-//                    result: comments,
-//                    page: page,
-//                    size: pageSize,
-//                    total: commentList.size()
-//            )
-
             return ResponseEntity.status(HttpStatus.OK).body(ResponseBody.builder()
                     .statusCode(HttpStatus.OK.value())
                     .message("Commented posts fetched!")
                     .data(data)
                     .build())
 
-//        } catch (Exception e) {
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseBody.builder()
-//                    .message(e.getMessage())
-//                    .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
-//                    .build())
-//        }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseBody.builder()
+                    .message(e.getMessage())
+                    .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                    .build())
+        }
     }
 }

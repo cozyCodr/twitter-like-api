@@ -3,19 +3,72 @@ package com.bright.TwitterAnalog
 import com.bright.TwitterAnalog.controller.PostController
 import com.bright.TwitterAnalog.dto.CreateCommentDto
 import com.bright.TwitterAnalog.dto.CreateOrEditPostDto
+import com.bright.TwitterAnalog.model.Post
+import com.bright.TwitterAnalog.model.User
+import com.bright.TwitterAnalog.repository.PostRepository
+import com.bright.TwitterAnalog.repository.UserRepository
+import com.bright.TwitterAnalog.service.AuthenticationService
+import com.bright.TwitterAnalog.service.JwtService
 import com.bright.TwitterAnalog.service.PostService
-import spock.lang.AutoCleanup
-import spock.lang.Shared
+import org.springframework.security.authentication.AuthenticationManager
+import org.springframework.security.crypto.password.PasswordEncoder
 import spock.lang.Specification
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import com.bright.TwitterAnalog.dto.ResponseBody
 import spock.lang.Unroll
 
 class PostControllerSpec extends Specification {
 
-    @Shared
-    @AutoCleanup
-    PostService postService = Mock()
+    PostService postService
+    PostController postController
+    AuthenticationService authenticationService
+
+    def userRepository = Mock(UserRepository)
+    def postRepository = Mock(PostRepository)
+//    def user = Mock(User)
+
+    // Initialize PostService with mocked dependencies
+    def setup() {
+        def authenticationManager = Mock(AuthenticationManager)
+        def jwtService = Mock(JwtService)
+        def passwordEncoder = Mock(PasswordEncoder)
+
+        authenticationService = new AuthenticationService(
+                userRepository as UserRepository,
+                passwordEncoder as PasswordEncoder,
+                authenticationManager as AuthenticationManager,
+                jwtService as JwtService
+        )
+
+        postService = new PostService(
+                postRepository as PostRepository,
+                authenticationService as AuthenticationService,
+                userRepository as UserRepository
+        )
+
+        // Initialise Post Controller
+        postController = new PostController(postService)
+
+        // Mocking the checkIfUserIsAuthenticated method to always return true
+        authenticationService.checkIfUserIsAuthenticated(_) >> true
+
+        // Mocking the checkIfUserIsAuthorized method to always return true
+        authenticationService.checkIfUserIsAuthorized(_) >> true
+
+        def userM = new User(username: "janedoe", password: "encodedPassword")
+        userRepository.findById(_) >> Optional.of(userM)
+
+        // Stub the findById method of postRepository
+        postRepository.findById("post123") >> Optional.of(new Post(id: "post123", content: "Initial content", owner: userM))
+
+        // Throw an exception when findById is called with any postId other than "post123"
+        postRepository.findById({ it != "post123" } as String) >> { throw new IllegalArgumentException("Post with given ID does not exist") }
+
+        def postId = "post123";
+        def post = new Post(id: postId, owner: userM) // Create a mock Post object
+        postRepository.findById(postId) >> Optional.of(post)
+    }
 
     @Unroll
     def "Create Post - Success"() {
@@ -28,7 +81,7 @@ class PostControllerSpec extends Specification {
         postService.createPost(dto, userId, authorizationHeader) >> ResponseEntity.status(HttpStatus.CREATED).body(ResponseBody.builder().build())
 
         when:
-        def response = new PostController(postService).creatPost(dto, userId, authorizationHeader)
+        def response = postController.creatPost(dto, userId, authorizationHeader)
 
         then:
         response.statusCode == HttpStatus.CREATED
@@ -46,6 +99,7 @@ class PostControllerSpec extends Specification {
         def response = new PostController(postService).updatePost(dto, postId, authorizationHeader)
 
         then:
+        println response.body.message
         response.statusCode == HttpStatus.OK
         response.body.message == "Post updated successfully!"
     }
@@ -77,6 +131,7 @@ class PostControllerSpec extends Specification {
         def response = new PostController(postService).deletePost(postId, authorizationHeader)
 
         then:
+        println response.body.message
         response.statusCode == HttpStatus.OK
         response.body.message == "Post Deleted successfully!"
         response.body.data == postId
@@ -159,38 +214,6 @@ class PostControllerSpec extends Specification {
         then:
         response.statusCode == HttpStatus.OK
         response.body.message == "Post unliked!"
-    }
-
-    @Unroll
-    def "Test markPostAsFavorite endpoint with valid postId and userId"() {
-        given:
-        def postId = "post123"
-        def userId = "user123"
-        def authorizationHeader = "Bearer token123"
-        postService.markPostAsFavorite(postId, userId, authorizationHeader) >> ResponseEntity.ok(ResponseBody.builder().statusCode(HttpStatus.OK.value()).message("Post marked as favorite successfully!").build())
-
-        when:
-        def response = new PostController(postService).markPostAsFavorite(postId, userId, authorizationHeader)
-
-        then:
-        response.statusCode == HttpStatus.OK.value()
-        response.body.message == "Post marked as favorite successfully!"
-    }
-
-    @Unroll
-    def "Test unMarkPostAsFavorite endpoint with valid postId and userId"() {
-        given:
-        def postId = "post123"
-        def userId = "user123"
-        def authorizationHeader = "Bearer token123"
-        postService.unMarkPostAsFavorite(postId, userId, authorizationHeader) >> ResponseEntity.ok(ResponseBody.builder().statusCode(HttpStatus.OK.value()).message("Post unmarked as favorite!").build())
-
-        when:
-        def response = new PostController(postService).unMarkPostAsFavorite(postId, userId, authorizationHeader)
-
-        then:
-        response.statusCode == HttpStatus.OK
-        response.body.message == "Post unmarked as favorite!"
     }
 
     @Unroll

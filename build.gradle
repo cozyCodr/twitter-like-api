@@ -9,7 +9,7 @@ group = 'com.bright'
 version = '0.0.1-SNAPSHOT'
 
 java {
-	sourceCompatibility = JavaVersion.VERSION_21
+	sourceCompatibility = JavaVersion.VERSION_17
 }
 
 configurations {
@@ -31,7 +31,6 @@ dependencies {
 	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.2")
 	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.2")
 	implementation 'org.apache.groovy:groovy'
-	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
 	compileOnly 'org.projectlombok:lombok:1.18.32'
 	annotationProcessor 'org.projectlombok:lombok:1.18.32'
@@ -43,13 +42,19 @@ dependencies {
 	testImplementation 'net.bytebuddy:byte-buddy:1.11.21'
 }
 
-test {
-	testLogging {
-		events "started", "passed", "skipped", "failed"
-		showStandardStreams = true
+sourceSets {
+	main {
+		groovy {
+			srcDirs = ['src/main/groovy'] // Point to your main Groovy source code
+		}
 	}
-
+	test {
+		groovy {
+			srcDirs = ['src/test/groovy'] // Point to your Groovy test source code
+		}
+	}
 }
 
 tasks.named('test') {
+	useJUnitPlatform()
 }

@@ -62,7 +62,6 @@ class AuthenticationControllerSpec extends Specification{
         authenticationController = new AuthenticationController(authenticationService)
     }
 
-
     @Unroll
     def "Register user with valid request"() {
 
@@ -86,7 +85,7 @@ class AuthenticationControllerSpec extends Specification{
         def response = authenticationController.registerUser(user)
 
         then: "Does user creation fail for existing user"
-        response.statusCode.'3xxRedirection' == HttpStatus.UNPROCESSABLE_ENTITY
+        response.statusCode == HttpStatus.UNPROCESSABLE_ENTITY
     }
 
     @Unroll

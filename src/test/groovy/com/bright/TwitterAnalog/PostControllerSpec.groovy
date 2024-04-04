@@ -26,7 +26,6 @@ class PostControllerSpec extends Specification {
 
     def userRepository = Mock(UserRepository)
     def postRepository = Mock(PostRepository)
-//    def user = Mock(User)
 
     // Initialize PostService with mocked dependencies
     def setup() {
@@ -51,13 +50,13 @@ class PostControllerSpec extends Specification {
         postController = new PostController(postService)
 
         // Mocking the checkIfUserIsAuthenticated method to always return true
-        authenticationService.checkIfUserIsAuthenticated(_) >> true
+        authenticationService.checkIfUserIsAuthenticated(_ as String) >> true
 
         // Mocking the checkIfUserIsAuthorized method to always return true
-        authenticationService.checkIfUserIsAuthorized(_) >> true
+        authenticationService.checkIfUserIsAuthorized(_ as String) >> true
 
         def userM = new User(username: "janedoe", password: "encodedPassword")
-        userRepository.findById(_) >> Optional.of(userM)
+        userRepository.findById(_ as String) >> Optional.of(userM)
 
         // Stub the findById method of postRepository
         postRepository.findById("post123") >> Optional.of(new Post(id: "post123", content: "Initial content", owner: userM))
@@ -65,7 +64,7 @@ class PostControllerSpec extends Specification {
         // Throw an exception when findById is called with any postId other than "post123"
         postRepository.findById({ it != "post123" } as String) >> { throw new IllegalArgumentException("Post with given ID does not exist") }
 
-        def postId = "post123";
+        def postId = "post123"
         def post = new Post(id: postId, owner: userM) // Create a mock Post object
         postRepository.findById(postId) >> Optional.of(post)
     }
@@ -99,7 +98,6 @@ class PostControllerSpec extends Specification {
         def response = new PostController(postService).updatePost(dto, postId, authorizationHeader)
 
         then:
-        println response.body.message
         response.statusCode == HttpStatus.OK
         response.body.message == "Post updated successfully!"
     }
@@ -131,7 +129,6 @@ class PostControllerSpec extends Specification {
         def response = new PostController(postService).deletePost(postId, authorizationHeader)
 
         then:
-        println response.body.message
         response.statusCode == HttpStatus.OK
         response.body.message == "Post Deleted successfully!"
         response.body.data == postId

@@ -10,11 +10,9 @@ import com.bright.TwitterAnalog.model.Comment
 import com.bright.TwitterAnalog.model.Post
 import com.bright.TwitterAnalog.repository.PostRepository
 import com.bright.TwitterAnalog.repository.UserRepository
-import com.mongodb.BasicDBObject
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.data.mongodb.core.aggregation.Aggregation
-import org.springframework.data.mongodb.core.aggregation.AggregationExpression
 import org.springframework.data.mongodb.core.aggregation.TypedAggregation
 import org.springframework.data.mongodb.core.query.Criteria
 import org.springframework.data.mongodb.core.query.Query
@@ -602,13 +600,17 @@ class PostService {
      */
     ResponseEntity<ResponseBody> getPostsLikedByUser(String userId, int pageNumber, int pageSize, String authorizationHeader) {
         try {
-
+            println "authenticating"
             authenticationService.checkIfUserIsAuthenticated(authorizationHeader)
+
+            println "authorizing"
             authenticationService.checkIfUserIsAuthorized(authorizationHeader)
 
+            println "getting user"
             // Extract user from token
             def user = userRepository.findById(userId)
                     .orElseThrow(() -> new IllegalArgumentException("User ID in token is invalid"))
+            println user.id
 
             // Create sort criteria (sorted by creation date, most recent first)
             Sort sort = Sort.by(Sort.Direction.DESC, "createdAt")
@@ -619,10 +621,12 @@ class PostService {
             // Create pagination request
             PageRequest pageRequest = PageRequest.of(page, pageSize, sort)
 
+            println "fetching post from db"
             // Query posts liked by the user, sorted and paginated
             List<Post> likedPosts = mongoTemplate.find(Query.query(Criteria.where("likes").in(user.id))
                     .with(pageRequest), Post)
 
+            println "collecting posts"
             // Create DTOs for frontend
             List<PostDto> likedPostsDto = likedPosts.collect { post ->
                 PostDto dto = new PostDto(

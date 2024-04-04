@@ -99,23 +99,30 @@ class UserService {
      */
     ResponseEntity<ResponseBody> followUser(String currentUserId, String targetUserId, String authorizationHeader){
         try {
+            println 1
             authenticationService.checkIfUserIsAuthenticated(authorizationHeader)
             authenticationService.checkIfUserIsAuthorized(authorizationHeader)
 
+            println 2
+            println targetUserId
             def targetUser = userRepository.findById(targetUserId).orElseThrow(
                     () -> new IllegalArgumentException("Target User's ID is invalid"))
 
+            println 3
             def currentUser = userRepository.findById(currentUserId).orElseThrow(
                     () -> new IllegalArgumentException("Current User's ID is invalid"))
 
+            println 4
             // Add current user to follower list of target user
             targetUser.addNewFollower(currentUser)
             userRepository.save(targetUser)
 
+            println 5
             // Add targetUser to a List of people current user is following
             currentUser.addFollowing(targetUser)
             userRepository.save(currentUser)
 
+            println 6
             // return a count of people current user is following
             Map<Object, Integer> data = new HashMap<>()
             data.put("following", currentUser.getFollowing().size())
@@ -128,13 +135,13 @@ class UserService {
         }
         catch(IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ResponseBody.builder()
-                    .message(e.getMessage())
+                    .message(e.stackTrace)
                     .statusCode(HttpStatus.UNPROCESSABLE_ENTITY.value())
                     .build())
         }
         catch(Exception e){
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseBody.builder()
-                    .message(e.getMessage())
+                    .message(e.stackTrace)
                     .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
                     .build())
 

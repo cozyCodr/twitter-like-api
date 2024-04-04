@@ -91,6 +91,4 @@ class UserController {
     ){
         return userService.unFollowUser(userId, targetUser, authorizationHeader)
     }
-
-
 }
